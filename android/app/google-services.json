@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "239045562928",
+    "project_id": "luttas-aac4b",
+    "storage_bucket": "luttas-aac4b.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:239045562928:android:90d511723cb522f519d3f5",
+        "android_client_info": {
+          "package_name": "com.example.luttas"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "239045562928-ntg6kuvh8a9qmg47vaprmebdr779pvdm.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwxuhDLhJselukdMCWKB-UrXR720ep2EM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "239045562928-ntg6kuvh8a9qmg47vaprmebdr779pvdm.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:239045562928:android:4e5a497d0319afe219d3f5",
+        "android_client_info": {
+          "package_name": "com.example.luttas_admin"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "239045562928-ntg6kuvh8a9qmg47vaprmebdr779pvdm.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBwxuhDLhJselukdMCWKB-UrXR720ep2EM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "239045562928-ntg6kuvh8a9qmg47vaprmebdr779pvdm.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
