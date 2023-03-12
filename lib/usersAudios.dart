@@ -7,6 +7,7 @@ import 'package:luttas_admin/Home.dart';
 
 class UsersAudios extends StatefulWidget {
   UsersAudios({super.key, required this.userId});
+
   var userId;
 
   @override
@@ -14,19 +15,16 @@ class UsersAudios extends StatefulWidget {
 }
 
 class _UsersAudiosState extends State<UsersAudios> {
-
   int cIndex = -1;
   bool _isPlaying = false;
-  bool idDownLoading=false;
+  bool idDownLoading = false;
   AudioPlayer _audioPlayer = AudioPlayer();
 
   late Duration _Duration = const Duration();
   late Duration _Postion = const Duration();
-  List deleteItems = [];
+  List selectedItems = [];
   final List _audios = [];
   bool isFetching = false;
-
-
 
   @override
   void dispose() {
@@ -47,10 +45,32 @@ class _UsersAudiosState extends State<UsersAudios> {
   //   var res =
   //   await firebase_storage.FirebaseStorage.instance.ref("/1").listAll();
   //
-  //   res.items.first.delete();
-  // }
+  //   res.items.first.delete();// }
 
 
+
+  deleteItems() async {
+    setState(() {
+      isUploading = true;
+    });
+
+    Iterable inReverse = selectedItems.reversed;
+    await Future.forEach(inReverse, (item) async {
+      await FirebaseFirestore.instance
+          .collection("Audios")
+          .doc("${item}_${widget.userId}")
+          .delete().then((value) {
+            print("$item is deleted");
+      }).catchError((e){
+        print("$item isn't deleted");
+      });
+      await firebase_storage.FirebaseStorage.instance.ref("/$item/${item}_${widget.userId}.wav").delete();
+    });
+
+    selectedItems.clear();
+
+    await _loadDta();
+  }
 
   _loadDta() async {
     setState(() {
@@ -61,23 +81,21 @@ class _UsersAudiosState extends State<UsersAudios> {
         .orderBy("ImageId")
         .get()
         .then((value) {
+          _audios.clear();
       value.docs.forEach((element) {
-        print(element.data()["UserId"]);
-
-        if(element.data()["UserId"]==widget.userId){
+        if (element.data()["UserId"] == widget.userId) {
           _audios.add(element.data());
         }
       });
       if (_audios.isNotEmpty) {
         print(_audios[0]);
-
       }
     });
     setState(() {
       isFetching = false;
+      isUploading = false;
     });
   }
-
 
   Future<void> _onPlay({
     required String url,
@@ -91,7 +109,7 @@ class _UsersAudiosState extends State<UsersAudios> {
       await _audioPlayer.setUrl(url);
       await _audioPlayer.play(url).whenComplete(() {
         setState(() {
-          idDownLoading=true;
+          idDownLoading = true;
         });
       });
       setState(() {
@@ -106,7 +124,7 @@ class _UsersAudiosState extends State<UsersAudios> {
       _audioPlayer.onDurationChanged.listen((event) {
         setState(() {
           _Duration = event;
-          idDownLoading=false;
+          idDownLoading = false;
         });
       });
       _audioPlayer.onPlayerCompletion.listen((event) {
@@ -124,18 +142,50 @@ class _UsersAudiosState extends State<UsersAudios> {
     setState(() {});
   }
 
-
-
+  bool isUploading = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         floatingActionButtonAnimator: FloatingActionButtonAnimator.scaling,
-        floatingActionButton: deleteItems.isEmpty
-            ? null
-            : _buildBottoms(),
+        floatingActionButton: selectedItems.isEmpty||isUploading  ? null : _buildBottoms(),
         appBar: _buildAppBar(),
-        body: _buildBody());
+        body: Stack(
+          children: [
+            _buildBody(),
+            if (isUploading)
+              Container(
+                color: Colors.black.withOpacity(0.4),
+              ),
+            if (isUploading) _buildLoadingCard()
+          ],
+        ));
+  }
+
+  Widget _buildLoadingCard() {
+    return Center(
+      child: Card(
+        elevation: 10,
+        color: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        margin: const EdgeInsets.all(15),
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child:
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: const [
+            Expanded(
+                child: Text(
+              "الرجاء الانتظار جارى تحميل الصوت المسجل....",
+              textDirection: TextDirection.rtl,
+            )),
+            SizedBox(
+              width: 10,
+            ),
+            CircularProgressIndicator(),
+          ]),
+        ),
+      ),
+    );
   }
 
   Widget _buildBody() {
@@ -144,7 +194,9 @@ class _UsersAudiosState extends State<UsersAudios> {
     }
 
     if (_audios.isEmpty) {
-      return const Center(child: Text("No Audios Founded"));
+      return const Center(child: Text("There are no Audios for this user",
+        textAlign: TextAlign.center,
+        style: TextStyle(fontSize: 18,fontWeight: FontWeight.w300),));
     }
     if (_audios.isNotEmpty) {
       return Center(
@@ -187,30 +239,42 @@ class _UsersAudiosState extends State<UsersAudios> {
   AppBar _buildAppBar() {
     return AppBar(
       backgroundColor: Colors.white,
-      leading: IconButton(onPressed: (){Navigator.pop(context);}, icon: Icon(Icons.arrow_back,color: Colors.black,)),
+      leading: IconButton(
+          onPressed: () {
+            Navigator.pop(context);
+          },
+          icon: Icon(
+            Icons.arrow_back,
+            color: Colors.black,
+          )),
       actions: [
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Text("Select All",style: TextStyle(color: Colors.black,),),
+            Text(
+              "Select All",
+              style: TextStyle(
+                color: Colors.black,
+              ),
+            ),
             IconButton(
                 onPressed: () {
-                  if (_audios.length != deleteItems.length) {
+                  if (_audios.length != selectedItems.length) {
                     _audios.forEach((element) {
-                      if (deleteItems.contains(element["ImageId"])) {
+                      if (selectedItems.contains(element["ImageId"])) {
                         print("contains");
                       } else {
-                        deleteItems.add(element["ImageId"]);
+                        selectedItems.add(element["ImageId"]);
                       }
                     });
                   } else {
-                    deleteItems.clear();
+                    selectedItems.clear();
                   }
-                  print(deleteItems.length);
+                  print(selectedItems.length);
                   setState(() {});
                 },
                 icon: Icon(
-                  _audios.length != deleteItems.length
+                  _audios.length != selectedItems.length
                       ? Icons.check_box_outlined
                       : Icons.check_box_sharp,
                   color: Colors.green,
@@ -221,29 +285,32 @@ class _UsersAudiosState extends State<UsersAudios> {
     );
   }
 
-  deleteItem()async{
-
-    deleteItems.forEach((element) async{
+  deleteItem() async {
+    selectedItems.forEach((element) async {
       print("${element}_${widget.userId}");
-      await FirebaseFirestore.instance.collection("Audios").doc("${element}_${widget.userId}").delete();
+      await FirebaseFirestore.instance
+          .collection("Audios")
+          .doc("${element}_${widget.userId}")
+          .delete();
     });
     print("object");
   }
-
 
   Widget _buildBottoms() {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         FloatingActionButton(
-          onPressed: deleteItem,
+          onPressed: (){
+            _sure(true);
+          },
           child: const Icon(Icons.delete),
         ),
         SizedBox(
           height: 15,
         ),
         FloatingActionButton(
-          onPressed: () {},
+          onPressed: (){},
           child: const Icon(Icons.download_rounded),
         ),
       ],
@@ -265,28 +332,25 @@ class _UsersAudiosState extends State<UsersAudios> {
               ListTile(
                 trailing: IconButton(
                     onPressed: () {
-                      if (deleteItems
-                          .contains(_audios[index]["ImageId"])) {
+                      if (selectedItems.contains(_audios[index]["ImageId"])) {
                         setState(() {
-                          deleteItems
-                              .remove(_audios[index]["ImageId"]);
+                          selectedItems.remove(_audios[index]["ImageId"]);
                         });
                       } else {
                         setState(() {
-                          deleteItems.add(_audios[index]["ImageId"]);
+                          selectedItems.add(_audios[index]["ImageId"]);
                         });
-                        print(deleteItems);
+                        print(selectedItems);
                       }
                     },
-                    icon: deleteItems
-                        .contains(_audios[index]["ImageId"])
+                    icon: selectedItems.contains(_audios[index]["ImageId"])
                         ? const Icon(
-                      Icons.check_box,
-                      color: Colors.green,
-                    )
+                            Icons.check_box,
+                            color: Colors.green,
+                          )
                         : const Icon(
-                      Icons.check_box_outlined,
-                    )),
+                            Icons.check_box_outlined,
+                          )),
                 title: Text(
                     "${_audios[index]["ImageId"]}_${_audios[index]["UserId"]}"),
                 leading: Container(
@@ -296,7 +360,10 @@ class _UsersAudiosState extends State<UsersAudios> {
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: Colors.grey.shade300),
                   ),
-                  child: Text("${_audios[index]["UserId"]}",style: TextStyle(fontSize: 18),),
+                  child: Text(
+                    "${_audios[index]["UserId"]}",
+                    style: TextStyle(fontSize: 18),
+                  ),
                 ),
               ),
               const SizedBox(
@@ -311,9 +378,8 @@ class _UsersAudiosState extends State<UsersAudios> {
                             url: _audios[index]["Audio"],
                           );
                         },
-                        icon: Icon(_isPlaying
-                            ? Icons.pause
-                            : Icons.play_arrow)),
+                        icon:
+                            Icon(_isPlaying ? Icons.pause : Icons.play_arrow)),
                     Expanded(
                       child: Slider(
                           value: cIndex == index
@@ -325,10 +391,14 @@ class _UsersAudiosState extends State<UsersAudios> {
                             _seek(v.toInt());
                           }),
                     ),
-                    idDownLoading?
-                    Container(height: 25,width: 25,child: Center(child: CircularProgressIndicator()),):
-                    Text(
-                        "${_Postion.inHours}:${_Postion.inMinutes}:${_Postion.inSeconds.remainder(60)} / ${_Duration.inHours}:${_Duration.inMinutes}:${_Duration.inSeconds.remainder(60)}")
+                    idDownLoading
+                        ? Container(
+                            height: 25,
+                            width: 25,
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        : Text(
+                            "${_Postion.inHours}:${_Postion.inMinutes}:${_Postion.inSeconds.remainder(60)} / ${_Duration.inHours}:${_Duration.inMinutes}:${_Duration.inSeconds.remainder(60)}")
                   ],
                 )
             ],
@@ -337,4 +407,47 @@ class _UsersAudiosState extends State<UsersAudios> {
       ),
     );
   }
+
+  void _sure(isDelete) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          actions: [
+            ElevatedButton(
+                style: ButtonStyle(
+                    backgroundColor: MaterialStateProperty.all(Colors.red)),
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: const Text("No")),
+            ElevatedButton(
+                style: ButtonStyle(
+                    backgroundColor: MaterialStateProperty.all(Colors.green)),
+                onPressed: () {
+                  if (isDelete) {
+                    Navigator.pop(context);
+                    deleteItems();
+                  } else {
+                    Navigator.pop(context);
+                    // downloadItems();
+                  }
+                },
+                child: const Text("Yes"))
+          ],
+          content: isDelete
+              ? const Text(
+            "Do you want to delete items?",
+            textAlign: TextAlign.center,
+          )
+              : const Text(
+            "Do you want to download items?",
+            textAlign: TextAlign.center,
+          ),
+          elevation: 10,
+        );
+      },
+    );
+  }
+
 }

@@ -41,7 +41,8 @@ dependencies:
   cloud_firestore: ^4.0.5
   firebase_storage: ^11.0.5
   audioplayers: ^0.20.0
-
+  permission_handler: ^8.3.0
+  downloads_path_provider_28:
 dev_dependencies:
   flutter_test:
     sdk: flutter
