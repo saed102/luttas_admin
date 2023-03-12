@@ -1,21 +1,23 @@
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_storage/firebase_storage.dart' as firebase_storage;
 import 'package:luttas_admin/Home.dart';
 
-class ImagesAudios extends StatefulWidget {
-  ImagesAudios({super.key, required this.imageId});
-
-  var imageId;
+class UsersAudios extends StatefulWidget {
+  UsersAudios({super.key, required this.userId});
+  var userId;
 
   @override
-  State<ImagesAudios> createState() => _ImagesAudiosState();
+  State<UsersAudios> createState() => _UsersAudiosState();
 }
 
-class _ImagesAudiosState extends State<ImagesAudios> {
+class _UsersAudiosState extends State<UsersAudios> {
+
   int cIndex = -1;
   bool _isPlaying = false;
+  bool idDownLoading=false;
   AudioPlayer _audioPlayer = AudioPlayer();
 
   late Duration _Duration = const Duration();
@@ -24,10 +26,12 @@ class _ImagesAudiosState extends State<ImagesAudios> {
   final List _audios = [];
   bool isFetching = false;
 
+
+
   @override
   void dispose() {
     _audioPlayer.release();
-    _audioPlayer.stop();
+
     _audioPlayer.dispose();
     super.dispose();
   }
@@ -46,23 +50,27 @@ class _ImagesAudiosState extends State<ImagesAudios> {
   //   res.items.first.delete();
   // }
 
+
+
   _loadDta() async {
     setState(() {
       isFetching = true;
     });
     await FirebaseFirestore.instance
         .collection("Audios")
-        .orderBy("UserId")
+        .orderBy("ImageId")
         .get()
         .then((value) {
       value.docs.forEach((element) {
-        print(element.data()["ImageId"]);
-        if (element.data()["ImageId"] == widget.imageId) {
+        print(element.data()["UserId"]);
+
+        if(element.data()["UserId"]==widget.userId){
           _audios.add(element.data());
         }
       });
       if (_audios.isNotEmpty) {
         print(_audios[0]);
+
       }
     });
     setState(() {
@@ -70,7 +78,6 @@ class _ImagesAudiosState extends State<ImagesAudios> {
     });
   }
 
-  bool idDownLoading = false;
 
   Future<void> _onPlay({
     required String url,
@@ -83,18 +90,15 @@ class _ImagesAudiosState extends State<ImagesAudios> {
     } else {
       await _audioPlayer.setUrl(url);
       await _audioPlayer.play(url).whenComplete(() {
-       setState(() {
-         idDownLoading=true;
-       });
+        setState(() {
+          idDownLoading=true;
+        });
       });
       setState(() {
         _isPlaying = true;
         _Postion = const Duration(seconds: 0);
       });
-      _audioPlayer.onPlayerStateChanged.listen((event) {
-        print("14ppp$event");
-      });
-      _audioPlayer.onAudioPositionChanged.listen(( event) {
+      _audioPlayer.onAudioPositionChanged.listen((event) {
         setState(() {
           _Postion = event;
         });
@@ -102,7 +106,7 @@ class _ImagesAudiosState extends State<ImagesAudios> {
       _audioPlayer.onDurationChanged.listen((event) {
         setState(() {
           _Duration = event;
-          idDownLoading = false;
+          idDownLoading=false;
         });
       });
       _audioPlayer.onPlayerCompletion.listen((event) {
@@ -120,11 +124,16 @@ class _ImagesAudiosState extends State<ImagesAudios> {
     setState(() {});
   }
 
+
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
         floatingActionButtonAnimator: FloatingActionButtonAnimator.scaling,
-        floatingActionButton: deleteItems.isEmpty ? null : _buildBottoms(),
+        floatingActionButton: deleteItems.isEmpty
+            ? null
+            : _buildBottoms(),
         appBar: _buildAppBar(),
         body: _buildBody());
   }
@@ -178,32 +187,20 @@ class _ImagesAudiosState extends State<ImagesAudios> {
   AppBar _buildAppBar() {
     return AppBar(
       backgroundColor: Colors.white,
-      leading: IconButton(
-          onPressed: () {
-            Navigator.pop(context);
-          },
-          icon: Icon(
-            Icons.arrow_back,
-            color: Colors.black,
-          )),
+      leading: IconButton(onPressed: (){Navigator.pop(context);}, icon: Icon(Icons.arrow_back,color: Colors.black,)),
       actions: [
         Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            Text(
-              "Select All",
-              style: TextStyle(
-                color: Colors.black,
-              ),
-            ),
+            Text("Select All",style: TextStyle(color: Colors.black,),),
             IconButton(
                 onPressed: () {
                   if (_audios.length != deleteItems.length) {
                     _audios.forEach((element) {
-                      if (deleteItems.contains(element["Audio"])) {
+                      if (deleteItems.contains(element["ImageId"])) {
                         print("contains");
                       } else {
-                        deleteItems.add(element["Audio"]);
+                        deleteItems.add(element["ImageId"]);
                       }
                     });
                   } else {
@@ -224,15 +221,25 @@ class _ImagesAudiosState extends State<ImagesAudios> {
     );
   }
 
+  deleteItem()async{
+
+    deleteItems.forEach((element) async{
+      print("${element}_${widget.userId}");
+      await FirebaseFirestore.instance.collection("Audios").doc("${element}_${widget.userId}").delete();
+    });
+    print("object");
+  }
+
+
   Widget _buildBottoms() {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         FloatingActionButton(
-          onPressed: () {},
+          onPressed: deleteItem,
           child: const Icon(Icons.delete),
         ),
-        const SizedBox(
+        SizedBox(
           height: 15,
         ),
         FloatingActionButton(
@@ -255,33 +262,42 @@ class _ImagesAudiosState extends State<ImagesAudios> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               ListTile(
                 trailing: IconButton(
                     onPressed: () {
-                      if (deleteItems.contains(_audios[index]["Audio"])) {
+                      if (deleteItems
+                          .contains(_audios[index]["ImageId"])) {
                         setState(() {
-                          deleteItems.remove(_audios[index]["Audio"]);
+                          deleteItems
+                              .remove(_audios[index]["ImageId"]);
                         });
                       } else {
                         setState(() {
-                          deleteItems.add(_audios[index]["Audio"]);
+                          deleteItems.add(_audios[index]["ImageId"]);
                         });
+                        print(deleteItems);
                       }
                     },
-                    icon: deleteItems.contains(_audios[index]["Audio"])
+                    icon: deleteItems
+                        .contains(_audios[index]["ImageId"])
                         ? const Icon(
-                            Icons.check_box,
-                            color: Colors.green,
-                          )
+                      Icons.check_box,
+                      color: Colors.green,
+                    )
                         : const Icon(
-                            Icons.check_box_outlined,
-                          )),
+                      Icons.check_box_outlined,
+                    )),
                 title: Text(
                     "${_audios[index]["ImageId"]}_${_audios[index]["UserId"]}"),
-                leading: Image.asset(
-                  "images/${widget.imageId}.jpg",
-                )
+                leading: Container(
+                  padding: EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.grey.shade300),
+                  ),
+                  child: Text("${_audios[index]["UserId"]}",style: TextStyle(fontSize: 18),),
+                ),
               ),
               const SizedBox(
                 height: 10,
@@ -295,8 +311,9 @@ class _ImagesAudiosState extends State<ImagesAudios> {
                             url: _audios[index]["Audio"],
                           );
                         },
-                        icon:
-                            Icon(_isPlaying ? Icons.pause : Icons.play_arrow)),
+                        icon: Icon(_isPlaying
+                            ? Icons.pause
+                            : Icons.play_arrow)),
                     Expanded(
                       child: Slider(
                           value: cIndex == index
@@ -309,7 +326,7 @@ class _ImagesAudiosState extends State<ImagesAudios> {
                           }),
                     ),
                     idDownLoading?
-                        Container(height: 25,width: 25,child: Center(child: CircularProgressIndicator()),):
+                    Container(height: 25,width: 25,child: Center(child: CircularProgressIndicator()),):
                     Text(
                         "${_Postion.inHours}:${_Postion.inMinutes}:${_Postion.inSeconds.remainder(60)} / ${_Duration.inHours}:${_Duration.inMinutes}:${_Duration.inSeconds.remainder(60)}")
                   ],
